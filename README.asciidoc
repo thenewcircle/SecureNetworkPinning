@@ -1,0 +1,5 @@
+= HTTP TLS Pinning
+
+This project was created to support various http://thenewcircle.com/training/android/[NewCircle Android Training] courses.
+
+This application is intended to demonstrate the use of TLS certificate pinning and certificate authority pinning in Android.
