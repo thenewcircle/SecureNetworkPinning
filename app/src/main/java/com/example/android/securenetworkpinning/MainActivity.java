@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
             try {
                 if (useTls) {
                     url = "https://" + url;
-                    return mRequestManager.makePinnedRequest(url);
+                    return mRequestManager.makeSecureRequest(url);
                 } else {
                     url = "http://" + url;
                     return mRequestManager.makeRequest(url);

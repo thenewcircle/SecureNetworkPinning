@@ -27,8 +27,6 @@ public class RequestManager {
     private static final String STORE_FILE = "httpbin.store";
     private static final String STORE_PASS = "newcircle";
 
-    private static final String HTTPBIN_PIN = "G2bwK+Vdcc6RPUi2h2A9mOPezwc=";
-
     private static RequestManager sInstance;
 
     public static synchronized RequestManager getInstance(Context context) {
@@ -49,7 +47,8 @@ public class RequestManager {
         }
     }
 
-    private void loadTrustStore(Context context) throws IOException, KeyStoreException,
+    private void loadTrustStore(Context context) throws
+            IOException, KeyStoreException,
             CertificateException, NoSuchAlgorithmException {
         AssetManager assetManager = context.getAssets();
         InputStream input = assetManager.open(STORE_FILE);
@@ -65,25 +64,9 @@ public class RequestManager {
         return parseResponse(urlConnection);
     }
 
-    public String makePinnedRequest(String endpoint) throws NoSuchAlgorithmException, KeyManagementException, IOException {
-        URL url = new URL(endpoint);
-        if (!url.getProtocol().equals("https")) {
-            throw new IllegalArgumentException("You must use an https URL!");
-        }
-
-        TrustManager[] trustManagers = new TrustManager[1];
-        trustManagers[0] = new PinnedTrustManager(HTTPBIN_PIN);
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustManagers, null);
-
-        HttpsURLConnection urlConnection = (HttpsURLConnection)url.openConnection();
-        urlConnection.setSSLSocketFactory(sslContext.getSocketFactory());
-
-        return parseResponse(urlConnection);
-    }
-
-    public String makeSecureRequest(String endpoint) throws CertificateException, NoSuchAlgorithmException, IOException, KeyManagementException, KeyStoreException {
+    public String makeSecureRequest(String endpoint) throws
+            CertificateException, NoSuchAlgorithmException,
+            IOException, KeyManagementException, KeyStoreException {
         URL url = new URL(endpoint);
         if (!url.getProtocol().equals("https")) {
             throw new IllegalArgumentException("You must use an https URL!");
