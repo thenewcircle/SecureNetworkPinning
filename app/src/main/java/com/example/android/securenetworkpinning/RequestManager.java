@@ -24,9 +24,6 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class RequestManager {
 
-    private static final String STORE_FILE = "httpbin.store";
-    private static final String STORE_PASS = "newcircle";
-
     private static RequestManager sInstance;
 
     public static synchronized RequestManager getInstance(Context context) {
@@ -37,51 +34,13 @@ public class RequestManager {
         return sInstance;
     }
 
-    private KeyStore mTrustStore;
-
     private RequestManager(Context context) {
-        try {
-            loadTrustStore(context);
-        } catch (Exception e) {
-            Log.w("RequestManager", "Unable to load trust store", e);
-        }
-    }
-
-    private void loadTrustStore(Context context) throws
-            IOException, KeyStoreException,
-            CertificateException, NoSuchAlgorithmException {
-        AssetManager assetManager = context.getAssets();
-        InputStream input = assetManager.open(STORE_FILE);
-        mTrustStore = KeyStore.getInstance("BKS");
-
-        mTrustStore.load(input, STORE_PASS.toCharArray());
+        //TODO: Create and load the local trust store
     }
 
     public String makeRequest(String endpoint) throws IOException {
         URL url = new URL(endpoint);
         HttpURLConnection urlConnection = (HttpURLConnection)url.openConnection();
-
-        return parseResponse(urlConnection);
-    }
-
-    public String makeSecureRequest(String endpoint) throws
-            CertificateException, NoSuchAlgorithmException,
-            IOException, KeyManagementException, KeyStoreException {
-        URL url = new URL(endpoint);
-        if (!url.getProtocol().equals("https")) {
-            throw new IllegalArgumentException("You must use an https URL!");
-        }
-
-        //Initialize TrustManager from our pinned keystore
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance("X509");
-        tmf.init(mTrustStore);
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, tmf.getTrustManagers(), null);
-
-        HttpsURLConnection urlConnection = (HttpsURLConnection)url.openConnection();
-        //Set SSLSocketFactory to validate against our TrustManager
-        urlConnection.setSSLSocketFactory(sslContext.getSocketFactory());
 
         return parseResponse(urlConnection);
     }

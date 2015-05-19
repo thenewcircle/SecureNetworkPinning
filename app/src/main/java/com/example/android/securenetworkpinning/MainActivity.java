@@ -15,7 +15,6 @@ public class MainActivity extends Activity {
 
     private TextView mTextView;
     private RadioGroup mEndpointOptions;
-    private CheckBox mSecureEnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +23,6 @@ public class MainActivity extends Activity {
 
         mTextView = (TextView) findViewById(R.id.text_results);
         mEndpointOptions = (RadioGroup) findViewById(R.id.options);
-        mSecureEnable = (CheckBox) findViewById(R.id.secure_enable);
 
         mRequestManager = RequestManager.getInstance(this);
     }
@@ -54,16 +52,9 @@ public class MainActivity extends Activity {
         protected String doInBackground(String... params) {
             String url = params[0];
 
-            boolean useTls = mSecureEnable.isChecked();
-
             try {
-                if (useTls) {
-                    url = "https://" + url;
-                    return mRequestManager.makeSecureRequest(url);
-                } else {
-                    url = "http://" + url;
-                    return mRequestManager.makeRequest(url);
-                }
+                url = "http://" + url;
+                return mRequestManager.makeRequest(url);
             } catch (Exception e) {
                 Log.w("RequestTask", "Unable to make request", e);
                 return "Error";
