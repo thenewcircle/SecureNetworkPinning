@@ -15,7 +15,10 @@ import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -23,9 +26,9 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
 public class RequestManager {
+    private static final String TAG = RequestManager.class.getSimpleName();
 
-    private static final String STORE_FILE = "httpbin.store";
-    private static final String STORE_PASS = "newcircle";
+    private static final String STORE_FILE = "httpbin.pem";
 
     private static RequestManager sInstance;
 
@@ -52,9 +55,22 @@ public class RequestManager {
             CertificateException, NoSuchAlgorithmException {
         AssetManager assetManager = context.getAssets();
         InputStream input = assetManager.open(STORE_FILE);
-        mTrustStore = KeyStore.getInstance("BKS");
 
-        mTrustStore.load(input, STORE_PASS.toCharArray());
+        //Create a certificate from the .pem file
+        CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        Certificate cert;
+        String subject;
+        try {
+            cert = factory.generateCertificate(input);
+            subject = ((X509Certificate) cert).getSubjectDN().toString();
+            Log.d(TAG, "Certificate read: " + subject);
+        } finally {
+            input.close();
+        }
+
+        mTrustStore = KeyStore.getInstance(KeyStore.getDefaultType());
+        mTrustStore.load(null, null); //This creates an empty store
+        mTrustStore.setCertificateEntry(subject, cert);
     }
 
     public String makeRequest(String endpoint) throws IOException {
