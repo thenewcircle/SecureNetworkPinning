@@ -22,9 +22,9 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mTextView = (TextView) findViewById(R.id.text_results);
-        mEndpointOptions = (RadioGroup) findViewById(R.id.options);
-        mSecureEnable = (CheckBox) findViewById(R.id.secure_enable);
+        mTextView = findViewById(R.id.text_results);
+        mEndpointOptions = findViewById(R.id.options);
+        mSecureEnable =  findViewById(R.id.secure_enable);
 
         mRequestManager = RequestManager.getInstance(this);
     }
