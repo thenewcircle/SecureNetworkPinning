@@ -21,8 +21,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mTextView = (TextView) findViewById(R.id.text_results);
-        mEndpointOptions = (RadioGroup) findViewById(R.id.options);
+        mTextView =  findViewById(R.id.text_results);
+        mEndpointOptions = findViewById(R.id.options);
 
         mRequestManager = RequestManager.getInstance(this);
     }
