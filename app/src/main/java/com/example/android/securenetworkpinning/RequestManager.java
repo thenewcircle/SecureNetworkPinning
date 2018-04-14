@@ -30,15 +30,18 @@ import javax.net.ssl.TrustManagerFactory;
 public class RequestManager {
     private static final String TAG = RequestManager.class.getSimpleName();
 
-
     // Got the pem file using the following command:
     // openssl s_client -showcerts -servername httpbin.org -connect httpbin.org:443 </dev/null
+    private static final String HTTP_BIN_PEM_FILE = "httpbin.pem";
+
     // Converted the pem to a crt using the following command:
     // openssl x509 -outform der -in httpbin.pem -out httpbin.crt
     private static final String HTTP_BIN_CRT_FILE = "httpbin.crt";
 
     // Downloaded from https://pki.google.com/
     private static final String NEWS_GOOGLE_CRT_FILE = "GIAG2.crt";
+
+    private HashMap<String, KeyStore> mTrustStores = new HashMap<>();
 
     private static RequestManager sInstance;
 
@@ -50,39 +53,54 @@ public class RequestManager {
         return sInstance;
     }
 
-    private HashMap<String, KeyStore> mTrustStores = new HashMap<>();
-
     private RequestManager(Context context) {
         try {
-            loadTrustStore(context, "https://httpbin.org", HTTP_BIN_CRT_FILE);
+            loadTrustStore(context, "https://httpbin.org", HTTP_BIN_PEM_FILE); // OR CRT FILE
             loadTrustStore(context, "https://news.google.com", NEWS_GOOGLE_CRT_FILE);
         } catch (Exception e) {
             Log.e("RequestManager", "Unable to load trust store", e);
         }
     }
 
-    private void loadTrustStore(Context context, String domain, String storeFile) throws IOException,
-            KeyStoreException, CertificateException, NoSuchAlgorithmException, URISyntaxException {
+    private void loadTrustStore(Context context, String domain, String certAsset)
+            throws IOException, KeyStoreException, CertificateException,
+            NoSuchAlgorithmException, URISyntaxException {
+        // Our Context is used to access the AssetManager which provides
+        // an InputStream to the .pem/.crt file
         AssetManager assetManager = context.getAssets();
-        InputStream input = assetManager.open(storeFile);
+        InputStream input = assetManager.open(certAsset);
 
-        //Create a certificate from the .pem file
+        // Create a certificate from the .pem/.crt file
+        // We need a CertificateFactory with the X.509 type
         CertificateFactory factory = CertificateFactory.getInstance("X.509");
         Certificate cert;
         String subject;
         try {
+            // Generate a certificate object
             cert = factory.generateCertificate(input);
+
+            // Extract the Common Name.
+            // Run `logcat |grep 'Certificate read'` to see the value
             subject = ((X509Certificate) cert).getSubjectDN().toString();
             Log.d(TAG, "Certificate read: " + subject);
         } finally {
             input.close();
         }
 
+        // Create a KeyStore object
         KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
         keyStore.load(null, null); //This creates an empty store
         keyStore.setCertificateEntry(subject, cert);
 
+        // Store the KeyStore object in our HashMap
         mTrustStores.put(getDomainName(domain), keyStore);
+    }
+
+    // A helper method to extract a domain name from a URL
+    private String getDomainName(String url) throws URISyntaxException {
+        URI uri = new URI(url);
+        String domain = uri.getHost();
+        return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
     public String makeRequest(String endpoint) throws IOException {
@@ -108,11 +126,11 @@ public class RequestManager {
         }
 
         // Initialize TrustManager from our pinned keystore
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance("X509");
-        tmf.init(keyStore);
+        TrustManagerFactory factory = TrustManagerFactory.getInstance("X509");
+        factory.init(keyStore);
 
         SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, tmf.getTrustManagers(), null);
+        sslContext.init(null, factory.getTrustManagers(), null);
 
         HttpsURLConnection urlConnection = (HttpsURLConnection) url.openConnection();
         // Set SSLSocketFactory to validate against our TrustManager
@@ -140,12 +158,6 @@ public class RequestManager {
         }
 
         return new String(out.toByteArray(), encoding);
-    }
-
-    private String getDomainName(String url) throws URISyntaxException {
-        URI uri = new URI(url);
-        String domain = uri.getHost();
-        return domain.startsWith("www.") ? domain.substring(4) : domain;
     }
 
     public class MissingPublicCertificateFile extends Exception {
