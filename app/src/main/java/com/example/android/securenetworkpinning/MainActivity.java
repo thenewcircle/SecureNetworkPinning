@@ -1,5 +1,6 @@
 package com.example.android.securenetworkpinning;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -54,7 +55,7 @@ public class MainActivity extends Activity {
         protected String doInBackground(String... params) {
             String url = params[0];
 
-            boolean useTls = mSecureEnable.isChecked();
+            @SuppressLint("WrongThread") boolean useTls = mSecureEnable.isChecked();
 
             try {
                 if (useTls) {

@@ -39,7 +39,7 @@ public class RequestManager {
     private static final String HTTP_BIN_CRT_FILE = "httpbin.crt";
 
     // Downloaded from https://pki.google.com/
-    private static final String NEWS_GOOGLE_CRT_FILE = "GIAG2.crt";
+    private static final String NEWS_GOOGLE_CRT_FILE = "GSR2.crt";
 
     private HashMap<String, KeyStore> mTrustStores = new HashMap<>();
 
