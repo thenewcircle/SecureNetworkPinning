@@ -1,0 +1,169 @@
+package com.example.android.securenetworkpinning
+
+import android.content.Context
+import android.content.res.AssetManager
+import android.util.Log
+
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URI
+import java.net.URISyntaxException
+import java.net.URL
+import java.net.URLConnection
+import java.security.KeyManagementException
+import java.security.KeyStore
+import java.security.KeyStoreException
+import java.security.NoSuchAlgorithmException
+import java.security.cert.Certificate
+import java.security.cert.CertificateException
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import java.util.HashMap
+
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
+
+class RequestManager private constructor(context: Context) {
+
+    private val mTrustStores = HashMap<String, KeyStore>()
+
+    init {
+        try {
+            loadTrustStore(context, "https://httpbin.org", HTTP_BIN_PEM_FILE) // OR CRT FILE
+            loadTrustStore(context, "https://news.google.com", NEWS_GOOGLE_CRT_FILE)
+        } catch (e: Exception) {
+            Log.e("RequestManager", "Unable to load trust store", e)
+        }
+
+    }
+
+    @Throws(IOException::class, KeyStoreException::class, CertificateException::class, NoSuchAlgorithmException::class, URISyntaxException::class)
+    private fun loadTrustStore(context: Context, domain: String, certAsset: String) {
+        // Our Context is used to access the AssetManager which provides
+        // an InputStream to the .pem/.crt file
+        val assetManager = context.assets
+        val input = assetManager.open(certAsset)
+
+        // Create a certificate from the .pem/.crt file
+        // We need a CertificateFactory with the X.509 type
+        val factory = CertificateFactory.getInstance("X.509")
+        val cert: Certificate
+        val subject: String
+        try {
+            // Generate a certificate object
+            cert = factory.generateCertificate(input)
+
+            // Extract the Common Name.
+            // Run `logcat |grep 'Certificate read'` to see the value
+            subject = (cert as X509Certificate).subjectDN.toString()
+            Log.d(TAG, "Certificate read: $subject")
+        } finally {
+            input.close()
+        }
+
+        // Create a KeyStore object
+        val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+        keyStore.load(null, null) //This creates an empty store
+        keyStore.setCertificateEntry(subject, cert)
+
+        // Store the KeyStore object in our HashMap
+        mTrustStores[getDomainName(domain)] = keyStore
+    }
+
+    // A helper method to extract a domain name from a URL
+    @Throws(URISyntaxException::class)
+    private fun getDomainName(url: String): String {
+        val uri = URI(url)
+        val domain = uri.host
+        return if (domain.startsWith("www.")) domain.substring(4) else domain
+    }
+
+    @Throws(IOException::class)
+    fun makeRequest(endpoint: String): String {
+        val url = URL(endpoint)
+        val urlConnection = url.openConnection() as HttpURLConnection
+
+        return parseResponse(urlConnection)
+    }
+
+    @Throws(NoSuchAlgorithmException::class, IOException::class, KeyManagementException::class, URISyntaxException::class, RequestManager.MissingPublicCertificateFile::class, KeyStoreException::class)
+    fun makeSecureRequest(endpoint: String): String {
+        val domain = getDomainName(endpoint)
+        if (!mTrustStores.containsKey(domain)) {
+            throw MissingPublicCertificateFile(domain)
+        }
+
+        val keyStore = mTrustStores[domain]
+
+        val url = URL(endpoint)
+        if (url.protocol != "https") {
+            throw IllegalArgumentException("You must use an https URL!")
+        }
+
+        // Initialize TrustManager from our pinned keystore
+        val factory = TrustManagerFactory.getInstance("X509")
+        factory.init(keyStore)
+
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, factory.trustManagers, null)
+
+        val urlConnection = url.openConnection() as HttpsURLConnection
+        // Set SSLSocketFactory to validate against our TrustManager
+        urlConnection.sslSocketFactory = sslContext.socketFactory
+
+        return parseResponse(urlConnection)
+    }
+
+    @Throws(IOException::class)
+    private fun parseResponse(connection: URLConnection): String {
+        val `in` = connection.getInputStream()
+        var encoding: String? = connection.contentEncoding
+        val contentLength = connection.contentLength
+        if (encoding == null) {
+            encoding = "UTF-8"
+        }
+
+        val buffer = ByteArray(16384)
+
+        val length = if (contentLength > 0) contentLength else 0
+        val out = ByteArrayOutputStream(length)
+
+        var read: Int
+        while ((read = `in`.read(buffer)) != -1) {
+            out.write(buffer, 0, read)
+        }
+
+        return String(out.toByteArray(), encoding)
+    }
+
+    inner class MissingPublicCertificateFile private constructor(url: String) : Exception("Missing crt file for $url")
+
+    companion object {
+        private val TAG = RequestManager::class.java.simpleName
+
+        // Got the pem file using the following command:
+        // openssl s_client -showcerts -servername httpbin.org -connect httpbin.org:443 </dev/null
+        private val HTTP_BIN_PEM_FILE = "httpbin.pem"
+
+        // Converted the pem to a crt using the following command:
+        // openssl x509 -outform der -in httpbin.pem -out httpbin.crt
+        private val HTTP_BIN_CRT_FILE = "httpbin.crt"
+
+        // Downloaded from https://pki.google.com/
+        private val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
+
+        private var instance: RequestManager? = null
+
+        @Synchronized
+        fun getInstance(context: Context): RequestManager {
+            if (instance == null) {
+                instance = RequestManager(context.applicationContext)
+            }
+
+            return instance
+        }
+    }
+}
