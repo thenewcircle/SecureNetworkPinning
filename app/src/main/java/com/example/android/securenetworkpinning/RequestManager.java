@@ -1,6 +1,5 @@
 package com.example.android.securenetworkpinning;
 
-
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.util.Log;
@@ -43,14 +42,14 @@ public class RequestManager {
 
     private HashMap<String, KeyStore> mTrustStores = new HashMap<>();
 
-    private static RequestManager sInstance;
+    private static RequestManager instance;
 
     public static synchronized RequestManager getInstance(Context context) {
-        if (sInstance == null) {
-            sInstance = new RequestManager(context.getApplicationContext());
+        if (instance == null) {
+            instance = new RequestManager(context.getApplicationContext());
         }
 
-        return sInstance;
+        return instance;
     }
 
     private RequestManager(Context context) {
