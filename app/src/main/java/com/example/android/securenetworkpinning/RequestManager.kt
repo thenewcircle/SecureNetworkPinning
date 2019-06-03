@@ -1,17 +1,15 @@
 package com.example.android.securenetworkpinning
 
-import android.content.Context
-import android.content.res.AssetManager
 import android.util.Log
 
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URL
 import java.net.URLConnection
+import java.nio.charset.Charset
 import java.security.KeyManagementException
 import java.security.KeyStore
 import java.security.KeyStoreException
@@ -26,14 +24,26 @@ import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 
-class RequestManager private constructor(context: Context) {
+object RequestManager {
+    private val TAG = RequestManager::class.java.simpleName
 
-    private val mTrustStores = HashMap<String, KeyStore>()
+    // Got the pem file using the following command:
+    // openssl s_client -showcerts -servername httpbin.org -connect httpbin.org:443 </dev/null
+    private val HTTP_BIN_PEM_FILE = "httpbin.pem"
+
+    // Converted the pem to a crt using the following command:
+    // openssl x509 -outform der -in httpbin.pem -out httpbin.crt
+    private val HTTP_BIN_CRT_FILE = "httpbin.crt"
+
+    // Downloaded from https://pki.google.com/
+    private val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
+
+    private val trustStores = HashMap<String, KeyStore>()
 
     init {
         try {
-            loadTrustStore(context, "https://httpbin.org", HTTP_BIN_PEM_FILE) // OR CRT FILE
-            loadTrustStore(context, "https://news.google.com", NEWS_GOOGLE_CRT_FILE)
+            loadTrustStore("https://httpbin.org", HTTP_BIN_PEM_FILE) // OR CRT FILE
+            loadTrustStore("https://news.google.com", NEWS_GOOGLE_CRT_FILE)
         } catch (e: Exception) {
             Log.e("RequestManager", "Unable to load trust store", e)
         }
@@ -41,10 +51,10 @@ class RequestManager private constructor(context: Context) {
     }
 
     @Throws(IOException::class, KeyStoreException::class, CertificateException::class, NoSuchAlgorithmException::class, URISyntaxException::class)
-    private fun loadTrustStore(context: Context, domain: String, certAsset: String) {
+    private fun loadTrustStore(domain: String, certAsset: String) {
         // Our Context is used to access the AssetManager which provides
         // an InputStream to the .pem/.crt file
-        val assetManager = context.assets
+        val assetManager = SecureNetworkApplication.context.assets
         val input = assetManager.open(certAsset)
 
         // Create a certificate from the .pem/.crt file
@@ -70,7 +80,7 @@ class RequestManager private constructor(context: Context) {
         keyStore.setCertificateEntry(subject, cert)
 
         // Store the KeyStore object in our HashMap
-        mTrustStores[getDomainName(domain)] = keyStore
+        trustStores[getDomainName(domain)] = keyStore
     }
 
     // A helper method to extract a domain name from a URL
@@ -92,11 +102,11 @@ class RequestManager private constructor(context: Context) {
     @Throws(NoSuchAlgorithmException::class, IOException::class, KeyManagementException::class, URISyntaxException::class, RequestManager.MissingPublicCertificateFile::class, KeyStoreException::class)
     fun makeSecureRequest(endpoint: String): String {
         val domain = getDomainName(endpoint)
-        if (!mTrustStores.containsKey(domain)) {
+        if (!trustStores.containsKey(domain)) {
             throw MissingPublicCertificateFile(domain)
         }
 
-        val keyStore = mTrustStores[domain]
+        val keyStore = trustStores[domain]
 
         val url = URL(endpoint)
         if (url.protocol != "https") {
@@ -119,7 +129,7 @@ class RequestManager private constructor(context: Context) {
 
     @Throws(IOException::class)
     private fun parseResponse(connection: URLConnection): String {
-        val `in` = connection.getInputStream()
+        val input = connection.getInputStream()
         var encoding: String? = connection.contentEncoding
         val contentLength = connection.contentLength
         if (encoding == null) {
@@ -131,39 +141,14 @@ class RequestManager private constructor(context: Context) {
         val length = if (contentLength > 0) contentLength else 0
         val out = ByteArrayOutputStream(length)
 
-        var read: Int
-        while ((read = `in`.read(buffer)) != -1) {
+        var read: Int = input.read(buffer)
+        while (read != -1) {
             out.write(buffer, 0, read)
+            read = input.read(buffer)
         }
 
-        return String(out.toByteArray(), encoding)
+        return String(out.toByteArray(), Charset.forName(encoding))
     }
 
-    inner class MissingPublicCertificateFile private constructor(url: String) : Exception("Missing crt file for $url")
-
-    companion object {
-        private val TAG = RequestManager::class.java.simpleName
-
-        // Got the pem file using the following command:
-        // openssl s_client -showcerts -servername httpbin.org -connect httpbin.org:443 </dev/null
-        private val HTTP_BIN_PEM_FILE = "httpbin.pem"
-
-        // Converted the pem to a crt using the following command:
-        // openssl x509 -outform der -in httpbin.pem -out httpbin.crt
-        private val HTTP_BIN_CRT_FILE = "httpbin.crt"
-
-        // Downloaded from https://pki.google.com/
-        private val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
-
-        private var instance: RequestManager? = null
-
-        @Synchronized
-        fun getInstance(context: Context): RequestManager {
-            if (instance == null) {
-                instance = RequestManager(context.applicationContext)
-            }
-
-            return instance
-        }
-    }
+    class MissingPublicCertificateFile(url: String) : Exception("Missing crt file for $url")
 }

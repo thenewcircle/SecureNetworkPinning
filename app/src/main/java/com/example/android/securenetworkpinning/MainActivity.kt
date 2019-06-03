@@ -11,9 +11,6 @@ import android.widget.RadioGroup
 import android.widget.TextView
 
 class MainActivity : Activity() {
-
-    private var requestManager: RequestManager? = null
-
     private var textView: TextView? = null
     private var endpointOptions: RadioGroup? = null
     private var secureEnable: CheckBox? = null
@@ -25,8 +22,6 @@ class MainActivity : Activity() {
         textView = findViewById(R.id.text_results)
         endpointOptions = findViewById(R.id.options)
         secureEnable = findViewById(R.id.secure_enable)
-
-        requestManager = RequestManager.getInstance(this)
     }
 
     fun onRequestClick(v: View) {
@@ -50,19 +45,18 @@ class MainActivity : Activity() {
 
             @SuppressLint("WrongThread")
             val useTls = secureEnable!!.isChecked
-            try {
+            return try {
                 if (useTls) {
                     url = "https://$url"
-                    return requestManager!!.makeSecureRequest(url)
+                    RequestManager.makeSecureRequest(url)
                 } else {
                     url = "http://$url"
-                    return requestManager!!.makeRequest(url)
+                    RequestManager.makeRequest(url)
                 }
             } catch (e: Exception) {
                 Log.w("RequestTask", "Unable to make request", e)
-                return "Error"
+                "Error"
             }
-
         }
 
         override fun onPostExecute(result: String) {
