@@ -40,7 +40,7 @@ public class RequestManager {
     // Downloaded from https://pki.google.com/
     private static final String NEWS_GOOGLE_CRT_FILE = "GSR2.crt";
 
-    private HashMap<String, KeyStore> mTrustStores = new HashMap<>();
+    private HashMap<String, KeyStore> trustStores = new HashMap<>();
 
     private static RequestManager instance;
 
@@ -92,7 +92,7 @@ public class RequestManager {
         keyStore.setCertificateEntry(subject, cert);
 
         // Store the KeyStore object in our HashMap
-        mTrustStores.put(getDomainName(domain), keyStore);
+        trustStores.put(getDomainName(domain), keyStore);
     }
 
     // A helper method to extract a domain name from a URL
@@ -113,11 +113,11 @@ public class RequestManager {
             KeyManagementException, URISyntaxException, MissingPublicCertificateFile,
             KeyStoreException {
         String domain = getDomainName(endpoint);
-        if (!mTrustStores.containsKey(domain)) {
+        if (!trustStores.containsKey(domain)) {
             throw new MissingPublicCertificateFile(domain);
         }
 
-        KeyStore keyStore = mTrustStores.get(domain);
+        KeyStore keyStore = trustStores.get(domain);
 
         URL url = new URL(endpoint);
         if (!url.getProtocol().equals("https")) {
