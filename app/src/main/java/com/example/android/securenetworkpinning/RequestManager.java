@@ -2,8 +2,6 @@ package com.example.android.securenetworkpinning;
 
 
 import android.content.Context;
-import android.content.res.AssetManager;
-import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -11,27 +9,17 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 
 public class RequestManager {
 
-    private static RequestManager sInstance;
+    private static RequestManager instance;
 
     public static synchronized RequestManager getInstance(Context context) {
-        if (sInstance == null) {
-            sInstance = new RequestManager(context.getApplicationContext());
+        if (instance == null) {
+            instance = new RequestManager(context.getApplicationContext());
         }
 
-        return sInstance;
+        return instance;
     }
 
     private RequestManager(Context context) {
