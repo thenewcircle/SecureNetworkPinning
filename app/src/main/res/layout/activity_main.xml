@@ -9,7 +9,7 @@
         android:text="Click to Make Request"
         android:onClick="onRequestClick"/>
     <CheckBox
-        android:id="@+id/secure_enable"
+        android:id="@+id/secureEnable"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Use SSL/TLS?"/>
