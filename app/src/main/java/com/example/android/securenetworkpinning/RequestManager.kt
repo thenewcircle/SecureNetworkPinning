@@ -29,14 +29,14 @@ object RequestManager {
 
     // Got the pem file using the following command:
     // openssl s_client -showcerts -servername httpbin.org -connect httpbin.org:443 </dev/null
-    private val HTTP_BIN_PEM_FILE = "httpbin.pem"
+    private const val HTTP_BIN_PEM_FILE = "httpbin.pem"
 
     // Converted the pem to a crt using the following command:
     // openssl x509 -outform der -in httpbin.pem -out httpbin.crt
-    private val HTTP_BIN_CRT_FILE = "httpbin.crt"
+    private const val HTTP_BIN_CRT_FILE = "httpbin.crt"
 
     // Downloaded from https://pki.google.com/
-    private val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
+    private const val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
 
     private val trustStores = HashMap<String, KeyStore>()
 
@@ -55,24 +55,23 @@ object RequestManager {
         // Our Context is used to access the AssetManager which provides
         // an InputStream to the .pem/.crt file
         val assetManager = SecureNetworkApplication.context.assets
-        val input = assetManager.open(certAsset)
+        val inputStream = assetManager.open(certAsset)
 
         // Create a certificate from the .pem/.crt file
         // We need a CertificateFactory with the X.509 type
         val factory = CertificateFactory.getInstance("X.509")
-        val cert: Certificate
+        var cert: Certificate? = null
         val subject: String
-        try {
+
+        inputStream.use { input ->
             // Generate a certificate object
             cert = factory.generateCertificate(input)
-
-            // Extract the Common Name.
-            // Run `logcat |grep 'Certificate read'` to see the value
-            subject = (cert as X509Certificate).subjectDN.toString()
-            Log.d(TAG, "Certificate read: $subject")
-        } finally {
-            input.close()
         }
+
+        // Extract the Common Name.
+        // Run `logcat |grep 'Certificate read'` to see the value
+        subject = (cert as X509Certificate).subjectDN.toString()
+        Log.d(TAG, "Certificate read: $subject")
 
         // Create a KeyStore object
         val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
@@ -99,7 +98,7 @@ object RequestManager {
         return parseResponse(urlConnection)
     }
 
-    @Throws(NoSuchAlgorithmException::class, IOException::class, KeyManagementException::class, URISyntaxException::class, RequestManager.MissingPublicCertificateFile::class, KeyStoreException::class)
+    @Throws(NoSuchAlgorithmException::class, IOException::class, KeyManagementException::class, URISyntaxException::class, MissingPublicCertificateFile::class, KeyStoreException::class)
     fun makeSecureRequest(endpoint: String): String {
         val domain = getDomainName(endpoint)
         if (!trustStores.containsKey(domain)) {
@@ -109,9 +108,7 @@ object RequestManager {
         val keyStore = trustStores[domain]
 
         val url = URL(endpoint)
-        if (url.protocol != "https") {
-            throw IllegalArgumentException("You must use an https URL!")
-        }
+        require(url.protocol == "https") { "You must use an https URL!" }
 
         // Initialize TrustManager from our pinned keystore
         val factory = TrustManagerFactory.getInstance("X509")
