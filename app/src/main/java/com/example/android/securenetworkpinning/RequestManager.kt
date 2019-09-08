@@ -130,11 +130,8 @@ object RequestManager {
     @Throws(IOException::class)
     private fun parseResponse(connection: URLConnection): String {
         val input = connection.getInputStream()
-        var encoding: String? = connection.contentEncoding
+        val encoding = connection.contentEncoding ?: "UTF-8"
         val contentLength = connection.contentLength
-        if (encoding == null) {
-            encoding = "UTF-8"
-        }
 
         val buffer = ByteArray(16384)
 

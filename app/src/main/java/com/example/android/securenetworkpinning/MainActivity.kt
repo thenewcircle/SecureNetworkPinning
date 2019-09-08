@@ -9,58 +9,46 @@ import android.view.View
 import android.widget.CheckBox
 import android.widget.RadioGroup
 import android.widget.TextView
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 
 class MainActivity : Activity() {
-    private var textView: TextView? = null
-    private var endpointOptions: RadioGroup? = null
-    private var secureEnable: CheckBox? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        textView = findViewById(R.id.text_results)
-        endpointOptions = findViewById(R.id.options)
-        secureEnable = findViewById(R.id.secure_enable)
     }
 
     fun onRequestClick(v: View) {
-        val task = RequestTask()
-        when (endpointOptions!!.checkedRadioButtonId) {
-            R.id.option_google -> task.execute("news.google.com/rss")
-            R.id.option_httpbin -> task.execute("httpbin.org/xml")
+        when (options.checkedRadioButtonId) {
+            R.id.option_google -> requestTask("news.google.com/rss")
+            R.id.option_httpbin -> requestTask("httpbin.org/xml")
             else -> throw IllegalArgumentException("Invalid Option Selected")
         }
         setResultText(null)
     }
 
-    fun setResultText(text: CharSequence?) {
-        textView!!.text = text
+    private fun setResultText(text: CharSequence?) {
+        textResults.text = text
     }
 
-    private inner class RequestTask : AsyncTask<String, Int, String>() {
+    private fun requestTask(url: String) {
+        val useTls = secureEnable.isChecked
+        GlobalScope.async {
+            try {
+                val result =
+                        if (useTls) RequestManager.makeSecureRequest("https://$url")
+                        else RequestManager.makeRequest("http://$url")
 
-        override fun doInBackground(vararg params: String): String {
-            var url = params[0]
-
-            @SuppressLint("WrongThread")
-            val useTls = secureEnable!!.isChecked
-            return try {
-                if (useTls) {
-                    url = "https://$url"
-                    RequestManager.makeSecureRequest(url)
-                } else {
-                    url = "http://$url"
-                    RequestManager.makeRequest(url)
+                withContext(Dispatchers.Main) {
+                    setResultText(result)
                 }
             } catch (e: Exception) {
                 Log.w("RequestTask", "Unable to make request", e)
                 "Error"
             }
-        }
-
-        override fun onPostExecute(result: String) {
-            setResultText(result)
         }
     }
 }
