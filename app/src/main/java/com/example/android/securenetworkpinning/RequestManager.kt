@@ -1,5 +1,6 @@
 package com.example.android.securenetworkpinning
 
+import android.app.Application
 import android.util.Log
 
 import java.io.ByteArrayOutputStream
@@ -54,8 +55,7 @@ object RequestManager {
     private fun loadTrustStore(domain: String, certAsset: String) {
         // Our Context is used to access the AssetManager which provides
         // an InputStream to the .pem/.crt file
-        val assetManager = SecureNetworkApplication.context.assets
-        val inputStream = assetManager.open(certAsset)
+        val inputStream = SecureNetworkApplication.context.assets.open(certAsset)
 
         // Create a certificate from the .pem/.crt file
         // We need a CertificateFactory with the X.509 type
