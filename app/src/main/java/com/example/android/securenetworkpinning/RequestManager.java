@@ -148,7 +148,7 @@ public class RequestManager {
 
         byte[] buffer = new byte[16384];
 
-        int length = contentLength > 0 ? contentLength : 0;
+        int length = Math.max(contentLength, 0);
         ByteArrayOutputStream out = new ByteArrayOutputStream(length);
 
         int read;
