@@ -22,6 +22,7 @@ import java.util.HashMap
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
+import kotlin.math.max
 
 object RequestManager {
     private val TAG = RequestManager::class.java.simpleName

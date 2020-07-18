@@ -1,14 +1,9 @@
 package com.example.android.securenetworkpinning
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.os.AsyncTask
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.CheckBox
-import android.widget.RadioGroup
-import android.widget.TextView
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
