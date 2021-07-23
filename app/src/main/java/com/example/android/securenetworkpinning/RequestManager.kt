@@ -9,7 +9,6 @@ import java.nio.charset.Charset
 import kotlin.math.max
 
 object RequestManager {
-    @Throws(IOException::class)
     fun makeRequest(endpoint: String): String {
         val url = URL(endpoint)
         val urlConnection = url.openConnection() as HttpURLConnection
