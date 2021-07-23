@@ -36,21 +36,35 @@ object RequestManager {
     private const val HTTP_BIN_CRT_FILE = "httpbin.crt"
 
     // Downloaded from https://pki.google.com/
-    private const val NEWS_GOOGLE_CRT_FILE = "GSR2.crt"
+    private const val NEWS_GOOGLE_PEM_FILE = "gts1c3.pem"
+    private const val NEWS_GOOGLE_CRT_FILE = "gts1c3.crt"
+
+    private const val USE_PEM = false
 
     private val trustStores = HashMap<String, KeyStore>()
 
     init {
         try {
-            loadTrustStore("https://httpbin.org", HTTP_BIN_PEM_FILE) // OR CRT FILE
-            loadTrustStore("https://news.google.com", NEWS_GOOGLE_CRT_FILE)
+            if (USE_PEM) {
+                loadTrustStore("https://httpbin.org", HTTP_BIN_PEM_FILE)
+                loadTrustStore("https://news.google.com", NEWS_GOOGLE_PEM_FILE)
+            } else {
+                loadTrustStore("https://httpbin.org", HTTP_BIN_CRT_FILE)
+                loadTrustStore("https://news.google.com", NEWS_GOOGLE_CRT_FILE)
+            }
         } catch (e: Exception) {
             Log.e("RequestManager", "Unable to load trust store", e)
         }
 
     }
 
-    @Throws(IOException::class, KeyStoreException::class, CertificateException::class, NoSuchAlgorithmException::class, URISyntaxException::class)
+    @Throws(
+        IOException::class,
+        KeyStoreException::class,
+        CertificateException::class,
+        NoSuchAlgorithmException::class,
+        URISyntaxException::class
+    )
     private fun loadTrustStore(domain: String, certAsset: String) {
         // Our Context is used to access the AssetManager which provides
         // an InputStream to the .pem/.crt file
@@ -59,17 +73,16 @@ object RequestManager {
         // Create a certificate from the .pem/.crt file
         // We need a CertificateFactory with the X.509 type
         val factory = CertificateFactory.getInstance("X.509")
-        var cert: Certificate? = null
-        val subject: String
+        var cert: Certificate?
 
         inputStream.use { input ->
             // Generate a certificate object
-            cert = factory.generateCertificate(input)
+            factory.generateCertificate(input).also { cert = it }
         }
 
         // Extract the Common Name.
         // Run `logcat |grep 'Certificate read'` to see the value
-        subject = (cert as X509Certificate).subjectDN.toString()
+        val subject: String = (cert as X509Certificate).subjectDN.toString()
         Log.d(TAG, "Certificate read: $subject")
 
         // Create a KeyStore object
@@ -96,7 +109,14 @@ object RequestManager {
         return parseResponse(urlConnection)
     }
 
-    @Throws(NoSuchAlgorithmException::class, IOException::class, KeyManagementException::class, URISyntaxException::class, MissingPublicCertificateFile::class, KeyStoreException::class)
+    @Throws(
+        NoSuchAlgorithmException::class,
+        IOException::class,
+        KeyManagementException::class,
+        URISyntaxException::class,
+        MissingPublicCertificateFile::class,
+        KeyStoreException::class
+    )
     fun makeSecureRequest(endpoint: String): String {
         val domain = getDomainName(endpoint)
         if (!trustStores.containsKey(domain)) {
