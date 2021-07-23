@@ -4,20 +4,21 @@ import android.app.Activity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.withContext
+import com.example.android.securenetworkpinning.databinding.ActivityMainBinding
+import kotlinx.coroutines.*
 
 class MainActivity : Activity() {
+    private lateinit var activityMainBinding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+
+        activityMainBinding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(activityMainBinding.root)
     }
 
     fun onRequestClick(v: View) {
-        when (options.checkedRadioButtonId) {
+        when (activityMainBinding.options.checkedRadioButtonId) {
             R.id.option_google -> requestTask("news.google.com/rss")
             R.id.option_httpbin -> requestTask("httpbin.org/xml")
             else -> throw IllegalArgumentException("Invalid Option Selected")
@@ -26,12 +27,13 @@ class MainActivity : Activity() {
     }
 
     private fun setResultText(text: CharSequence?) {
-        textResults.text = text
+        activityMainBinding.textResults.text = text
     }
 
+    @DelicateCoroutinesApi
     private fun requestTask(url: String) {
-        val useTls = secureEnable.isChecked
-        GlobalScope.async {
+        val useTls = activityMainBinding.secureEnable.isChecked
+        GlobalScope.launch(Dispatchers.IO) {
             try {
                 val result =
                         if (useTls) RequestManager.makeSecureRequest("https://$url")
@@ -42,7 +44,6 @@ class MainActivity : Activity() {
                 }
             } catch (e: Exception) {
                 Log.w("RequestTask", "Unable to make request", e)
-                "Error"
             }
         }
     }
